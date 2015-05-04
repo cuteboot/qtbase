@@ -264,7 +264,7 @@ private:
 };
 #endif // QT_USE_ICU
 
-#if defined Q_OS_UNIX && !defined Q_OS_MAC && !defined Q_OS_ANDROID
+//#if defined Q_OS_UNIX && !defined Q_OS_MAC && !defined Q_OS_ANDROID
 struct QTzTransitionTime
 {
     qint64 atMSecsSinceEpoch;
@@ -336,7 +336,7 @@ private:
 #endif // QT_USE_ICU
     QByteArray m_posixRule;
 };
-#endif // Q_OS_UNIX
+//#endif // Q_OS_UNIX
 
 #ifdef Q_OS_MAC
 class Q_AUTOTEST_EXPORT QMacTimeZonePrivate Q_DECL_FINAL : public QTimeZonePrivate

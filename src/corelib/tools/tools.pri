@@ -140,11 +140,13 @@ else:blackberry {
     SOURCES += tools/qelapsedtimer_unix.cpp tools/qlocale_blackberry.cpp tools/qtimezoneprivate_tz.cpp
     HEADERS += tools/qlocale_blackberry.h
 }
-else:android {
-    SOURCES += tools/qelapsedtimer_unix.cpp tools/qlocale_unix.cpp tools/qtimezoneprivate_android.cpp
-}
 else:unix {
-    SOURCES += tools/qelapsedtimer_unix.cpp tools/qlocale_unix.cpp tools/qtimezoneprivate_tz.cpp
+    SOURCES += \
+        tools/qelapsedtimer_unix.cpp \
+        tools/qlocale_unix.cpp
+
+    android:!android-no-sdk: SOURCES += tools/qtimezoneprivate_android.cpp
+    else: SOURCES += tools/qtimezoneprivate_tz.cpp
 }
 else:win32 {
     SOURCES += tools/qelapsedtimer_win.cpp tools/qlocale_win.cpp

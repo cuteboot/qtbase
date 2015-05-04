@@ -3,7 +3,7 @@
 ** Copyright (C) 2015 The Qt Company Ltd.
 ** Contact: http://www.qt.io/licensing/
 **
-** This file is part of the qmake spec of the Qt Toolkit.
+** This file is part of the plugins of the Qt Toolkit.
 **
 ** $QT_BEGIN_LICENSE:LGPL21$
 ** Commercial License Usage
@@ -31,57 +31,22 @@
 **
 ****************************************************************************/
 
-#include "qeglfshooks.h"
+#include "qeglfssurfaceflingerintegration.h"
 
-#include <ui/DisplayInfo.h>
-#include <ui/FramebufferNativeWindow.h>
 #include <fcntl.h>
 #include <unistd.h>
 #include <linux/fb.h>
 #include <sys/ioctl.h>
 
-#if Q_ANDROID_VERSION_MAJOR > 4 || (Q_ANDROID_VERSION_MAJOR == 4 && Q_ANDROID_VERSION_MINOR >= 1)
-#include <gui/SurfaceComposerClient.h>
-#else
-#include <surfaceflinger/SurfaceComposerClient.h>
-#endif
-
-using namespace android;
-
 QT_BEGIN_NAMESPACE
 
-class QEglFSPandaHooks : public QEglFSHooks
-{
-public:
-    QEglFSPandaHooks();
-    virtual EGLNativeWindowType createNativeWindow(QPlatformWindow *window, const QSize &size, const QSurfaceFormat &format);
-    virtual bool filterConfig(EGLDisplay display, EGLConfig config) const;
-    virtual const char *fbDeviceName() const { return "/dev/graphics/fb0"; }
-
-private:
-    EGLNativeWindowType createNativeWindowSurfaceFlinger(const QSize &size, const QSurfaceFormat &format);
-    EGLNativeWindowType createNativeWindowFramebuffer(const QSize &size, const QSurfaceFormat &format);
-
-    void ensureFramebufferNativeWindowCreated();
-
-    // androidy things
-    sp<android::SurfaceComposerClient> mSession;
-    sp<android::SurfaceControl> mControl;
-    sp<android::Surface> mAndroidSurface;
-
-    sp<android::FramebufferNativeWindow> mFramebufferNativeWindow;
-    EGLint mFramebufferVisualId;
-
-    bool mUseFramebuffer;
-};
-
-QEglFSPandaHooks::QEglFSPandaHooks()
+QEglFSSurfaceFlingerIntegration::QEglFSSurfaceFlingerIntegration()
     : mFramebufferVisualId(EGL_DONT_CARE)
 {
     mUseFramebuffer = qgetenv("QT_QPA_EGLFS_NO_SURFACEFLINGER").toInt();
 }
 
-void QEglFSPandaHooks::ensureFramebufferNativeWindowCreated()
+void QEglFSSurfaceFlingerIntegration::ensureFramebufferNativeWindowCreated()
 {
     if (mFramebufferNativeWindow.get())
         return;
@@ -95,29 +60,31 @@ void QEglFSPandaHooks::ensureFramebufferNativeWindowCreated()
     window->query(window, NATIVE_WINDOW_FORMAT, &mFramebufferVisualId);
 }
 
-EGLNativeWindowType QEglFSPandaHooks::createNativeWindow(QPlatformWindow *window, const QSize &size, const QSurfaceFormat &format)
+EGLNativeWindowType QEglFSSurfaceFlingerIntegration::createNativeWindow(QPlatformWindow *window, const QSize &size, const QSurfaceFormat &format)
 {
     Q_UNUSED(window)
     return mUseFramebuffer ? createNativeWindowFramebuffer(size, format) : createNativeWindowSurfaceFlinger(size, format);
 }
 
-EGLNativeWindowType QEglFSPandaHooks::createNativeWindowFramebuffer(const QSize &size, const QSurfaceFormat &)
+EGLNativeWindowType QEglFSSurfaceFlingerIntegration::createNativeWindowFramebuffer(const QSize &size, const QSurfaceFormat &)
 {
     Q_UNUSED(size);
     ensureFramebufferNativeWindowCreated();
     return mFramebufferNativeWindow.get();
 }
 
-EGLNativeWindowType QEglFSPandaHooks::createNativeWindowSurfaceFlinger(const QSize &size, const QSurfaceFormat &)
+EGLNativeWindowType QEglFSSurfaceFlingerIntegration::createNativeWindowSurfaceFlinger(const QSize &size, const QSurfaceFormat &)
 {
     Q_UNUSED(size);
 
-    mSession = new SurfaceComposerClient();
+    sp<IBinder> dtoken(SurfaceComposerClient::getBuiltInDisplay(
+            ISurfaceComposer::eDisplayIdMain)); 
     DisplayInfo dinfo;
     int status=0;
-    status = mSession->getDisplayInfo(0, &dinfo);
-    mControl = mSession->createSurface(
-            0, dinfo.w, dinfo.h, PIXEL_FORMAT_RGB_888);
+    mSession = new SurfaceComposerClient();
+    SurfaceComposerClient::getDisplayInfo(dtoken, &dinfo);
+    mControl = mSession->createSurface(android::String8("eglfs"),
+            dinfo.w, dinfo.h, PIXEL_FORMAT_RGB_888);
     SurfaceComposerClient::openGlobalTransaction();
     mControl->setLayer(0x40000000);
 //    mControl->setAlpha(1);
@@ -128,12 +95,12 @@ EGLNativeWindowType QEglFSPandaHooks::createNativeWindowSurfaceFlinger(const QSi
     return eglWindow;
 }
 
-bool QEglFSPandaHooks::filterConfig(EGLDisplay display, EGLConfig config) const
+bool QEglFSSurfaceFlingerIntegration::filterConfig(EGLDisplay display, EGLConfig config) const
 {
     if (!mUseFramebuffer)
         return true;
 
-    const_cast<QEglFSPandaHooks *>(this)->ensureFramebufferNativeWindowCreated();
+    const_cast<QEglFSSurfaceFlingerIntegration *>(this)->ensureFramebufferNativeWindowCreated();
 
     if (mFramebufferVisualId == EGL_DONT_CARE)
         return true;
@@ -143,8 +110,5 @@ bool QEglFSPandaHooks::filterConfig(EGLDisplay display, EGLConfig config) const
 
     return nativeVisualId == mFramebufferVisualId;
 }
-
-static QEglFSPandaHooks eglFSPandaHooks;
-QEglFSHooks *platformHooks = &eglFSPandaHooks;
 
 QT_END_NAMESPACE
