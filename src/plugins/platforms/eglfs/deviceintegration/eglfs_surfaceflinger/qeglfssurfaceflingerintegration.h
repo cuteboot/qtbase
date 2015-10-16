@@ -60,6 +60,8 @@ public:
     virtual QByteArray fbDeviceName() const { return "/dev/graphics/fb0"; }
     virtual void platformInit() {}
     virtual void platformDestroy() {}
+    QSize screenSize() const;
+
 private:
     EGLNativeWindowType createNativeWindowSurfaceFlinger(const QSize &size, const QSurfaceFormat &format);
     EGLNativeWindowType createNativeWindowFramebuffer(const QSize &size, const QSurfaceFormat &format);
@@ -75,6 +77,8 @@ private:
     EGLint mFramebufferVisualId;
 
     bool mUseFramebuffer;
+
+    QSize mSize;
 };
 
 QT_END_NAMESPACE

@@ -31,6 +31,8 @@
 **
 ****************************************************************************/
 
+#include <QDebug>
+
 #include "qeglfssurfaceflingerintegration.h"
 
 #include <fcntl.h>
@@ -44,6 +46,11 @@ QEglFSSurfaceFlingerIntegration::QEglFSSurfaceFlingerIntegration()
     : mFramebufferVisualId(EGL_DONT_CARE)
 {
     mUseFramebuffer = qgetenv("QT_QPA_EGLFS_NO_SURFACEFLINGER").toInt();
+    sp<IBinder> dtoken(SurfaceComposerClient::getBuiltInDisplay(ISurfaceComposer::eDisplayIdMain));
+    DisplayInfo dinfo;
+    mSession = new SurfaceComposerClient();
+    SurfaceComposerClient::getDisplayInfo(dtoken, &dinfo);
+    mSize = QSize(dinfo.w, dinfo.h);
 }
 
 void QEglFSSurfaceFlingerIntegration::ensureFramebufferNativeWindowCreated()
@@ -77,14 +84,9 @@ EGLNativeWindowType QEglFSSurfaceFlingerIntegration::createNativeWindowSurfaceFl
 {
     Q_UNUSED(size);
 
-    sp<IBinder> dtoken(SurfaceComposerClient::getBuiltInDisplay(
-            ISurfaceComposer::eDisplayIdMain)); 
-    DisplayInfo dinfo;
     int status=0;
-    mSession = new SurfaceComposerClient();
-    SurfaceComposerClient::getDisplayInfo(dtoken, &dinfo);
     mControl = mSession->createSurface(android::String8("eglfs"),
-            dinfo.w, dinfo.h, PIXEL_FORMAT_RGB_888);
+            mSize.width(), mSize.height(), PIXEL_FORMAT_RGB_888);
     SurfaceComposerClient::openGlobalTransaction();
     mControl->setLayer(0x40000000);
 //    mControl->setAlpha(1);
@@ -110,5 +112,11 @@ bool QEglFSSurfaceFlingerIntegration::filterConfig(EGLDisplay display, EGLConfig
 
     return nativeVisualId == mFramebufferVisualId;
 }
+
+QSize QEglFSSurfaceFlingerIntegration::screenSize() const
+{
+    return mSize;
+}
+
 
 QT_END_NAMESPACE
