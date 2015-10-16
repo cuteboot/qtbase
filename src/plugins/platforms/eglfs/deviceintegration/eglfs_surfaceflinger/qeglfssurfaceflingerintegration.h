@@ -63,20 +63,10 @@ public:
     QSize screenSize() const;
 
 private:
-    EGLNativeWindowType createNativeWindowSurfaceFlinger(const QSize &size, const QSurfaceFormat &format);
-    EGLNativeWindowType createNativeWindowFramebuffer(const QSize &size, const QSurfaceFormat &format);
-
-    void ensureFramebufferNativeWindowCreated();
-
     // androidy things
     sp<android::SurfaceComposerClient> mSession;
     sp<android::SurfaceControl> mControl;
     sp<android::Surface> mAndroidSurface;
-
-    sp<android::FramebufferNativeWindow> mFramebufferNativeWindow;
-    EGLint mFramebufferVisualId;
-
-    bool mUseFramebuffer;
 
     QSize mSize;
 };

@@ -43,9 +43,7 @@
 QT_BEGIN_NAMESPACE
 
 QEglFSSurfaceFlingerIntegration::QEglFSSurfaceFlingerIntegration()
-    : mFramebufferVisualId(EGL_DONT_CARE)
 {
-    mUseFramebuffer = qgetenv("QT_QPA_EGLFS_NO_SURFACEFLINGER").toInt();
     sp<IBinder> dtoken(SurfaceComposerClient::getBuiltInDisplay(ISurfaceComposer::eDisplayIdMain));
     DisplayInfo dinfo;
     mSession = new SurfaceComposerClient();
@@ -53,35 +51,9 @@ QEglFSSurfaceFlingerIntegration::QEglFSSurfaceFlingerIntegration()
     mSize = QSize(dinfo.w, dinfo.h);
 }
 
-void QEglFSSurfaceFlingerIntegration::ensureFramebufferNativeWindowCreated()
-{
-    if (mFramebufferNativeWindow.get())
-        return;
-    mFramebufferNativeWindow = new FramebufferNativeWindow();
-    framebuffer_device_t const *fbDev = mFramebufferNativeWindow->getDevice();
-    if (!fbDev)
-        qFatal("Failed to get valid FramebufferNativeWindow, no way to create EGL surfaces");
-
-    ANativeWindow *window = mFramebufferNativeWindow.get();
-
-    window->query(window, NATIVE_WINDOW_FORMAT, &mFramebufferVisualId);
-}
-
 EGLNativeWindowType QEglFSSurfaceFlingerIntegration::createNativeWindow(QPlatformWindow *window, const QSize &size, const QSurfaceFormat &format)
 {
     Q_UNUSED(window)
-    return mUseFramebuffer ? createNativeWindowFramebuffer(size, format) : createNativeWindowSurfaceFlinger(size, format);
-}
-
-EGLNativeWindowType QEglFSSurfaceFlingerIntegration::createNativeWindowFramebuffer(const QSize &size, const QSurfaceFormat &)
-{
-    Q_UNUSED(size);
-    ensureFramebufferNativeWindowCreated();
-    return mFramebufferNativeWindow.get();
-}
-
-EGLNativeWindowType QEglFSSurfaceFlingerIntegration::createNativeWindowSurfaceFlinger(const QSize &size, const QSurfaceFormat &)
-{
     Q_UNUSED(size);
 
     int status=0;
@@ -99,24 +71,12 @@ EGLNativeWindowType QEglFSSurfaceFlingerIntegration::createNativeWindowSurfaceFl
 
 bool QEglFSSurfaceFlingerIntegration::filterConfig(EGLDisplay display, EGLConfig config) const
 {
-    if (!mUseFramebuffer)
-        return true;
-
-    const_cast<QEglFSSurfaceFlingerIntegration *>(this)->ensureFramebufferNativeWindowCreated();
-
-    if (mFramebufferVisualId == EGL_DONT_CARE)
-        return true;
-
-    EGLint nativeVisualId = 0;
-    eglGetConfigAttrib(display, config, EGL_NATIVE_VISUAL_ID, &nativeVisualId);
-
-    return nativeVisualId == mFramebufferVisualId;
+    return true;
 }
 
 QSize QEglFSSurfaceFlingerIntegration::screenSize() const
 {
     return mSize;
 }
-
 
 QT_END_NAMESPACE
