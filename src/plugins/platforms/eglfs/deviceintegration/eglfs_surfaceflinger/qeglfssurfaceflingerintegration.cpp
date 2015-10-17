@@ -32,6 +32,7 @@
 ****************************************************************************/
 
 #include <QDebug>
+#include <QLoggingCategory>
 
 #include "qeglfssurfaceflingerintegration.h"
 
@@ -42,13 +43,19 @@
 
 QT_BEGIN_NAMESPACE
 
+Q_LOGGING_CATEGORY(qLcSf, "qt.qpa.eglfs.surfaceflinger")
+
 QEglFSSurfaceFlingerIntegration::QEglFSSurfaceFlingerIntegration()
 {
+    qCDebug(qLcSf) << "Acquiring token";
     sp<IBinder> dtoken(SurfaceComposerClient::getBuiltInDisplay(ISurfaceComposer::eDisplayIdMain));
+    qCDebug(qLcSf) << "Token acquired";
     DisplayInfo dinfo;
     mSession = new SurfaceComposerClient();
+    qCDebug(qLcSf) << "Getting display info";
     SurfaceComposerClient::getDisplayInfo(dtoken, &dinfo);
     mSize = QSize(dinfo.w, dinfo.h);
+    qCDebug(qLcSf) << "Display size: " << mSize;
 }
 
 EGLNativeWindowType QEglFSSurfaceFlingerIntegration::createNativeWindow(QPlatformWindow *window, const QSize &size, const QSurfaceFormat &format)
@@ -56,6 +63,7 @@ EGLNativeWindowType QEglFSSurfaceFlingerIntegration::createNativeWindow(QPlatfor
     Q_UNUSED(window)
     Q_UNUSED(size);
 
+    qCDebug(qLcSf) << "Creating native window";
     int status=0;
     mControl = mSession->createSurface(android::String8("eglfs"),
             mSize.width(), mSize.height(), PIXEL_FORMAT_RGB_888);
@@ -66,6 +74,7 @@ EGLNativeWindowType QEglFSSurfaceFlingerIntegration::createNativeWindow(QPlatfor
     mAndroidSurface = mControl->getSurface();
 
     EGLNativeWindowType eglWindow = mAndroidSurface.get();
+    qCDebug(qLcSf) << "Created native window";
     return eglWindow;
 }
 
